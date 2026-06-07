@@ -14,12 +14,8 @@
            body, html {
     margin: 0; padding: 0; overflow: hidden;
     background-color: #050505; font-family: 'Cinzel', serif;
-    transform: scale(0.5);          /* ← 整體縮放50% */
-    transform-origin: top left;      /* ← 以左上角為基準點 */
-    width: 200%;                      /* ← 補償縮放帶來的佈局問題 */
-    height: 200%;
-
-        }
+    zoom: 50%;  /* ← 用 zoom 而不是 transform */
+}
 
         #canvas-container {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
