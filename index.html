@@ -33,6 +33,8 @@
             background: rgba(25, 20, 15, 0.98); border: 3px solid #a67c52; padding: 60px 80px;
             border-radius: 15px; box-shadow: 0 0 70px rgba(0,0,0,1), inset 0 0 30px rgba(166, 124, 82, 0.3);
             max-width: 850px; color: #e4d5b7; font-family: 'EB Garamond', serif;
+            transform: scale(0.65);
+            transform-origin: center;
         }
 
         .intro-box h2 {
@@ -139,6 +141,8 @@
             background: rgba(35, 30, 25, 0.98); padding: 35px 40px; border-radius: 20px;
             box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 15px 45px rgba(0,0,0,0.9);
             border: 3px solid #d4af37; display: flex; gap: 20px; align-items: center;
+            transform: scale(0.6);
+            transform-origin: bottom right;
         }
         .lock-position-label { color: #d4af37; font-size: 1.5rem; font-weight: bold; text-align: center; min-width: 50px; }
         
@@ -251,9 +255,6 @@
     </div>
 
     <script>
-        // 縮放比例設定
-        const SCALE = 0.5;
-
         /* ╔══════════════════════════════════════════════════════════╗
            ║          密碼系統 - 動態生成和打亂
            ╚══════════════════════════════════════════════════════════╝ */
@@ -566,15 +567,13 @@
 
         /* ╔══════════════════════════════════════════════════════════╗
            ║          p5.js 火把引擎
-           ╚══════════════════════════════════════════��═══════════════╝ */
+           ╚══════════════════════════════════════════════════════════╝ */
         let darknessMask;
         function setup() {
             pixelDensity(1);
             
             let canvas = createCanvas(windowWidth, windowHeight);
             canvas.parent('canvas-container');
-            canvas.style.transform = `scale(${SCALE})`;
-            canvas.style.transformOrigin = 'top left';
             
             darknessMask = createGraphics(windowWidth, windowHeight);
             particlePool.init(200);
@@ -604,7 +603,7 @@
             image(stoneWallGraphics, windowWidth / 2, windowHeight / 2);
 
             if (gameState.isWaitingToStrike && !gameState.isTorchLit) {
-                gameState.mouseSpeed = dist(mouseX / SCALE, mouseY / SCALE, pmouseX / SCALE, pmouseY / SCALE);
+                gameState.mouseSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
                 if (gameState.mouseSpeed > gameState.MOUSE_SPEED_THRESHOLD &&
                     (frameCount - gameState.lastStrikeFrame > gameState.STRIKE_COOLDOWN)) {
                     gameState.strikeCount++; 
@@ -612,13 +611,13 @@
                     if (gameState.strikeCount < 3) {
                         SoundManager.playStrike(); 
                         gameState.flashOpacity = 200;
-                        for (let i = 0; i < 15; i++) particlePool.spawn(mouseX / SCALE, mouseY / SCALE);
+                        for (let i = 0; i < 15; i++) particlePool.spawn(mouseX, mouseY);
                     } else {
                         SoundManager.playTorchLight(); 
                         gameState.isTorchLit = true; 
                         gameState.isWaitingToStrike = false;
                         UIController.strikeHint.style.display = "none";
-                        for (let i = 0; i < min(60, gameState.MAX_SPARKS); i++) particlePool.spawn(mouseX / SCALE, mouseY / SCALE, true);
+                        for (let i = 0; i < min(60, gameState.MAX_SPARKS); i++) particlePool.spawn(mouseX, mouseY, true);
                     }
                 }
             }
@@ -626,8 +625,8 @@
             if (gameState.isTorchLit) {
                 noCursor(); 
                 gameState.currentRadius = lerp(gameState.currentRadius, gameState.TORCH_RADIUS_TARGET, 0.05);
-                gameState.torchX = mouseX / SCALE; 
-                gameState.torchY = mouseY / SCALE;
+                gameState.torchX = mouseX; 
+                gameState.torchY = mouseY;
             }
 
             let flicker = gameState.currentRadius > 50 ? random(-6, 6) : 0;
@@ -638,7 +637,7 @@
                 drawingContext.shadowColor = 'rgba(255, 60, 0, 0.9)';
                 fill(255, 180, 50, 25); 
                 noStroke(); 
-                circle(mouseX / SCALE, mouseY / SCALE, actualRadius); 
+                circle(mouseX, mouseY, actualRadius); 
                 drawingContext.shadowBlur = 0;
             }
 
@@ -648,11 +647,11 @@
 
             if (gameState.isTorchLit) {
                 darknessMask.erase(); 
-                darknessMask.circle(mouseX / SCALE, mouseY / SCALE, gameState.currentRadius + random(-5, 5)); 
+                darknessMask.circle(mouseX, mouseY, gameState.currentRadius + random(-5, 5)); 
                 darknessMask.noErase();
             } else if (gameState.flashOpacity > 0) {
                 darknessMask.erase(); 
-                darknessMask.circle(mouseX / SCALE, mouseY / SCALE, 150); 
+                darknessMask.circle(mouseX, mouseY, 150); 
                 darknessMask.noErase(); 
                 gameState.flashOpacity -= 15;
             }
@@ -686,9 +685,7 @@
                 for (let symbol of PasswordSystem.getSelectedSymbols()) {
                     const pos = PasswordSystem.getWallPosition(symbol.icon);
                     if (pos) {
-                        const scaledMouseX = mouseX / SCALE;
-                        const scaledMouseY = mouseY / SCALE;
-                        const dist_to_symbol = dist(scaledMouseX, scaledMouseY, pos.x, pos.y);
+                        const dist_to_symbol = dist(mouseX, mouseY, pos.x, pos.y);
                         const dist_from_torch = dist(gameState.torchX, gameState.torchY, pos.x, pos.y);
                         if (dist_to_symbol < 50 && dist_from_torch < gameState.currentRadius + 100) {
                             UIController.revealAnswer(symbol.icon, symbol.answer); 
