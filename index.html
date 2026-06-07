@@ -11,31 +11,36 @@
         /* =========================================
            1. 全局遊戲氛圍設定 
            ========================================= */
-           body, html {
-    margin: 0; padding: 0; overflow: hidden;
-    background-color: #050505; font-family: 'Cinzel', serif;
-    zoom: 50%;  /* ← 用 zoom 而不是 transform */
-}
+        body, html {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: #050505; font-family: 'Cinzel', serif;
+        }
 
         #canvas-container {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+            transform: scale(0.5);
+            transform-origin: top left;
+            width: 200vw;
+            height: 200vh;
         }
 
         /* =========================================
-           2. 開場說明畫面 (Intro Screen) - 縮小至 0.85
+           2. 開場說明畫面 (Intro Screen)
            ========================================= */
         #intro-screen {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.96); z-index: 200; 
             display: flex; justify-content: center; align-items: center; backdrop-filter: blur(8px);
+            transform: scale(0.5);
+            transform-origin: top left;
+            width: 200vw;
+            height: 200vh;
         }
 
         .intro-box {
             background: rgba(25, 20, 15, 0.98); border: 3px solid #a67c52; padding: 60px 80px;
             border-radius: 15px; box-shadow: 0 0 70px rgba(0,0,0,1), inset 0 0 30px rgba(166, 124, 82, 0.3);
             max-width: 850px; color: #e4d5b7; font-family: 'EB Garamond', serif;
-            transform: scale(0.85);
-            transform-origin: center center;
         }
 
         .intro-box h2 {
@@ -135,15 +140,13 @@
         #paper-toggle-btn:hover { transform: translateX(18px); background: #f1e6d0; }
 
         /* =========================================
-           5. 右下角：石製密碼鎖 - 縮小至 0.8
+           5. 右下角：石製密碼鎖
            ========================================= */
         #lock-ui {
             position: absolute; bottom: 50px; right: 50px; z-index: 10;
             background: rgba(35, 30, 25, 0.98); padding: 35px 40px; border-radius: 20px;
             box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 15px 45px rgba(0,0,0,0.9);
             border: 3px solid #d4af37; display: flex; gap: 20px; align-items: center;
-            transform: scale(0.8);
-            transform-origin: bottom right;
         }
         .lock-position-label { color: #d4af37; font-size: 1.5rem; font-weight: bold; text-align: center; min-width: 50px; }
         
@@ -164,6 +167,10 @@
             background: rgba(0, 0, 0, 0.95); z-index: 300; color: #d4af37;
             text-align: center; justify-content: center; align-items: center; flex-direction: column;
             backdrop-filter: blur(10px);
+            transform: scale(0.5);
+            transform-origin: top left;
+            width: 200vw;
+            height: 200vh;
         }
 
         #truth-artifact {
@@ -256,6 +263,9 @@
     </div>
 
     <script>
+        // 縮放比例設定
+        const SCALE = 0.5;
+
         /* ╔══════════════════════════════════════════════════════════╗
            ║          密碼系統 - 動態生成和打亂
            ╚══════════════════════════════════════════════════════════╝ */
@@ -299,7 +309,7 @@
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 this.bgm = new Audio('./sounds/bg.mp3');
                 this.bgm.loop = true;  
-                this.bgm.volume = 0.3; // BGM音量
+                this.bgm.volume = 0.3;
                 document.getElementById('sound-toggle').addEventListener('click', () => this.toggleMute());
             },
             playBGM() {
@@ -317,7 +327,7 @@
                 const noiseSource = this.audioContext.createBufferSource(); noiseSource.buffer = noiseBuffer;
                 const filter = this.audioContext.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 3000;
                 const gainNode = this.audioContext.createGain();
-                gainNode.gain.setValueAtTime(0.2, now); // 💡 音量降低
+                gainNode.gain.setValueAtTime(0.2, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
                 noiseSource.connect(filter); filter.connect(gainNode); gainNode.connect(this.audioContext.destination);
                 noiseSource.start(now); noiseSource.stop(now + 0.15);
@@ -327,7 +337,7 @@
                 const now = this.audioContext.currentTime;
                 const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.5);
                 const gainNode = this.audioContext.createGain(); gainNode.gain.setValueAtTime(0, now); 
-                gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1); // 💡 音量降低
+                gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1);
                 gainNode.gain.exponentialRampToValueAtTime(0.05, now + 0.5);
                 osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
                 osc.start(now); osc.stop(now + 0.5);
@@ -338,7 +348,7 @@
                 for (let i = 0; i < 3; i++) {
                     const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.value = 800 + i * 200;
                     const gainNode = this.audioContext.createGain(); 
-                    gainNode.gain.setValueAtTime(0.1, now + i * 0.15); // 💡 音量降低
+                    gainNode.gain.setValueAtTime(0.1, now + i * 0.15);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.15);
                     osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
                     osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.15);
@@ -351,7 +361,7 @@
                 for (let i = 0; i < notes.length; i++) {
                     const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.value = notes[i];
                     const gainNode = this.audioContext.createGain(); 
-                    gainNode.gain.setValueAtTime(0.15, now + i * 0.2); // 💡 音量降低
+                    gainNode.gain.setValueAtTime(0.15, now + i * 0.2);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.2 + 0.25);
                     osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
                     osc.start(now + i * 0.2); osc.stop(now + i * 0.2 + 0.25);
@@ -362,7 +372,7 @@
                 const now = this.audioContext.currentTime;
                 const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
                 const gainNode = this.audioContext.createGain(); 
-                gainNode.gain.setValueAtTime(0.1, now); // 💡 音量降低
+                gainNode.gain.setValueAtTime(0.1, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
                 osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
                 osc.start(now); osc.stop(now + 0.2);
@@ -412,7 +422,8 @@
         const gameState = {
             phase: 'intro', strikeCount: 0, isWaitingToStrike: false, isTorchLit: false, currentRadius: 0,
             lastStrikeFrame: 0, mouseSpeed: 0, flashOpacity: 0, password: { slot1: '', slot2: '', slot3: '' },
-            MAX_SPARKS: 30, MOUSE_SPEED_THRESHOLD: 80, STRIKE_COOLDOWN: 15, torchX: 0, torchY: 0
+            MAX_SPARKS: 30, MOUSE_SPEED_THRESHOLD: 80, STRIKE_COOLDOWN: 15, torchX: 0, torchY: 0,
+            TORCH_RADIUS_TARGET: 190
         };
 
         /* ╔══════════════════════════════════════════════════════════╗
@@ -562,19 +573,23 @@
         let darknessMask;
         function setup() {
             pixelDensity(1);
-            let canvas = createCanvas(windowWidth, windowHeight); canvas.parent('canvas-container');
-            darknessMask = createGraphics(windowWidth, windowHeight);
+            let canvas = createCanvas(windowWidth / SCALE, windowHeight / SCALE);
+            canvas.parent('canvas-container');
+            canvas.style.transform = `scale(${SCALE})`;
+            canvas.style.transformOrigin = 'top left';
+            
+            darknessMask = createGraphics(windowWidth / SCALE, windowHeight / SCALE);
             particlePool.init(200);
             
             PasswordSystem.init();
             generateStoneWall();
             
-            const centerX = windowWidth / 2; const centerY = windowHeight / 2;
+            const centerX = (windowWidth / SCALE) / 2;
+            const centerY = (windowHeight / SCALE) / 2;
             PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[0].icon, centerX - 500, centerY - 350);
             PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[1].icon, centerX + 450, centerY + 300);
             PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[2].icon, centerX - 400, centerY + 350);
             
-            // 💡 確保混淆符號被加到牆上
             const decoySymbols = PasswordSystem.symbolPool.filter(s => !PasswordSystem.selectedSymbols.includes(s));
             if(decoySymbols.length >= 2){
                 PasswordSystem.setWallPosition(decoySymbols[0].icon, centerX + 300, centerY - 250);
@@ -585,27 +600,27 @@
         }
 
         function draw() {
-            image(stoneWallGraphics, windowWidth / 2, windowHeight / 2);
+            image(stoneWallGraphics, (windowWidth / SCALE) / 2, (windowHeight / SCALE) / 2);
 
             if (gameState.isWaitingToStrike && !gameState.isTorchLit) {
-                gameState.mouseSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
+                gameState.mouseSpeed = dist(mouseX / SCALE, mouseY / SCALE, pmouseX / SCALE, pmouseY / SCALE);
                 if (gameState.mouseSpeed > gameState.MOUSE_SPEED_THRESHOLD &&
                     (frameCount - gameState.lastStrikeFrame > gameState.STRIKE_COOLDOWN)) {
                     gameState.strikeCount++; gameState.lastStrikeFrame = frameCount;
                     if (gameState.strikeCount < 3) {
                         SoundManager.playStrike(); gameState.flashOpacity = 200;
-                        for (let i = 0; i < 15; i++) particlePool.spawn(mouseX, mouseY);
+                        for (let i = 0; i < 15; i++) particlePool.spawn(mouseX / SCALE, mouseY / SCALE);
                     } else {
                         SoundManager.playTorchLight(); gameState.isTorchLit = true; gameState.isWaitingToStrike = false;
                         UIController.strikeHint.style.display = "none";
-                        for (let i = 0; i < min(60, gameState.MAX_SPARKS); i++) particlePool.spawn(mouseX, mouseY, true);
+                        for (let i = 0; i < min(60, gameState.MAX_SPARKS); i++) particlePool.spawn(mouseX / SCALE, mouseY / SCALE, true);
                     }
                 }
             }
 
             if (gameState.isTorchLit) {
-                noCursor(); gameState.currentRadius = lerp(gameState.currentRadius, 380, 0.05);
-                gameState.torchX = mouseX; gameState.torchY = mouseY;
+                noCursor(); gameState.currentRadius = lerp(gameState.currentRadius, gameState.TORCH_RADIUS_TARGET, 0.05);
+                gameState.torchX = mouseX / SCALE; gameState.torchY = mouseY / SCALE;
             }
 
             let flicker = gameState.currentRadius > 50 ? random(-6, 6) : 0;
@@ -613,7 +628,7 @@
 
             if (gameState.isTorchLit && gameState.currentRadius > 10) {
                 drawingContext.shadowBlur = 40; drawingContext.shadowColor = 'rgba(255, 60, 0, 0.9)';
-                fill(255, 180, 50, 25); noStroke(); circle(mouseX, mouseY, actualRadius); drawingContext.shadowBlur = 0;
+                fill(255, 180, 50, 25); noStroke(); circle(mouseX / SCALE, mouseY / SCALE, actualRadius); drawingContext.shadowBlur = 0;
             }
 
             darknessMask.clear();
@@ -621,14 +636,13 @@
             darknessMask.background(0, 0, 0, envDarkness);
 
             if (gameState.isTorchLit) {
-                darknessMask.erase(); darknessMask.circle(mouseX, mouseY, gameState.currentRadius + random(-5, 5)); darknessMask.noErase();
+                darknessMask.erase(); darknessMask.circle(mouseX / SCALE, mouseY / SCALE, gameState.currentRadius + random(-5, 5)); darknessMask.noErase();
             } else if (gameState.flashOpacity > 0) {
-                darknessMask.erase(); darknessMask.circle(mouseX, mouseY, 150); darknessMask.noErase(); gameState.flashOpacity -= 15;
+                darknessMask.erase(); darknessMask.circle(mouseX / SCALE, mouseY / SCALE, 150); darknessMask.noErase(); gameState.flashOpacity -= 15;
             }
 
             push(); imageMode(CORNER); image(darknessMask, 0, 0); pop();
 
-            // 💡 畫出牆上所有的象形文字（包含正確與混淆項）
             if (gameState.isTorchLit && gameState.phase === 'playing') {
                 drawingContext.shadowBlur = 25; drawingContext.shadowColor = 'rgba(255, 215, 0, 0.9)';
                 for (const [icon, pos] of Object.entries(PasswordSystem.wallPositions)) {
@@ -648,7 +662,9 @@
                 for (let symbol of PasswordSystem.getSelectedSymbols()) {
                     const pos = PasswordSystem.getWallPosition(symbol.icon);
                     if (pos) {
-                        const dist_to_symbol = dist(mouseX, mouseY, pos.x, pos.y);
+                        const scaledMouseX = mouseX / SCALE;
+                        const scaledMouseY = mouseY / SCALE;
+                        const dist_to_symbol = dist(scaledMouseX, scaledMouseY, pos.x, pos.y);
                         const dist_from_torch = dist(gameState.torchX, gameState.torchY, pos.x, pos.y);
                         if (dist_to_symbol < 50 && dist_from_torch < gameState.currentRadius + 100) {
                             UIController.revealAnswer(symbol.icon, symbol.answer); return false;
@@ -658,7 +674,11 @@
             }
         }
 
-        function windowResized() { resizeCanvas(windowWidth, windowHeight); darknessMask = createGraphics(windowWidth, windowHeight); generateStoneWall(); }
+        function windowResized() {
+            resizeCanvas(windowWidth / SCALE, windowHeight / SCALE);
+            darknessMask = createGraphics(windowWidth / SCALE, windowHeight / SCALE);
+            generateStoneWall();
+        }
         document.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
     </script>
 </body>
