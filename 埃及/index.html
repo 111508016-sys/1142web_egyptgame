@@ -1,0 +1,663 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>埃及展廳：象形解碼機關</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        /* =========================================
+           1. 全局遊戲氛圍設定 
+           ========================================= */
+        body, html {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: #050505; font-family: 'Cinzel', serif;
+        }
+
+        #canvas-container {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+        }
+
+        /* =========================================
+           2. 開場說明畫面 (Intro Screen)
+           ========================================= */
+        #intro-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.96); z-index: 200; 
+            display: flex; justify-content: center; align-items: center; backdrop-filter: blur(8px);
+        }
+
+        .intro-box {
+            background: rgba(25, 20, 15, 0.98); border: 3px solid #a67c52; padding: 60px 80px;
+            border-radius: 15px; box-shadow: 0 0 70px rgba(0,0,0,1), inset 0 0 30px rgba(166, 124, 82, 0.3);
+            max-width: 850px; color: #e4d5b7; font-family: 'EB Garamond', serif;
+        }
+
+        .intro-box h2 {
+            font-family: 'Cinzel', serif; font-size: 3.5rem; color: #d4af37; text-align: center;
+            margin-top: 0; margin-bottom: 20px; text-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+        }
+
+        .intro-box .divider { height: 3px; background: linear-gradient(90deg, transparent, #a67c52, transparent); margin-bottom: 40px; }
+        .intro-box p { font-size: 2rem; line-height: 1.5; margin-bottom: 30px; }
+        .intro-box ul { list-style: none; padding: 0; margin-bottom: 50px; }
+        .intro-box li { font-size: 1.8rem; margin-bottom: 20px; line-height: 1.4; color: #cfbba0; }
+
+        #start-btn {
+            display: block; width: 100%; padding: 20px; background: #a67c52; color: #111;
+            font-family: 'Cinzel', serif; font-size: 2rem; font-weight: bold; border: none;
+            border-radius: 8px; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        #start-btn:hover { background: #d4af37; transform: scale(1.02); box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5); }
+
+        .intro-box h2, .intro-box .divider, .intro-box p, .intro-box li, #start-btn {
+            opacity: 0; transform: translateY(20px); animation: ghostlyReveal 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        .intro-box h2 { animation-delay: 0.3s; }
+        .intro-box .divider { animation-delay: 0.6s; }
+        .intro-box p { animation-delay: 1.0s; }
+        .intro-box li:nth-child(1) { animation-delay: 1.8s; }
+        .intro-box li:nth-child(2) { animation-delay: 2.3s; }
+        .intro-box li:nth-child(3) { animation-delay: 2.8s; }
+        #start-btn { animation-delay: 3.5s; } 
+
+        @keyframes ghostlyReveal {
+            0% { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+            100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        /* =========================================
+           3. 💡 劃火柴提示字 
+           ========================================= */
+        #strike-hint {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #d4af37; font-size: 2.5rem; font-family: 'EB Garamond', serif; font-style: italic;
+            letter-spacing: 3px; display: none; z-index: 150; pointer-events: none;
+            animation: pulseHint 1.5s infinite alternate;
+        }
+        @keyframes pulseHint { 0% { opacity: 0.2; } 100% { opacity: 1; text-shadow: 0 0 25px rgba(212, 175, 55, 0.9); } }
+
+        /* =========================================
+           4. 左下角：動態考古圖紙
+           ========================================= */
+        #cheat-sheet {
+            position: absolute; bottom: 50px; left: 50px; z-index: 20; width: 800px;
+            background-color: #e4d5b7; padding: 60px; border-radius: 5px 30px 5px 50px;
+            box-shadow: 20px 30px 70px rgba(0,0,0,1), inset 0 0 80px rgba(139, 115, 85, 0.6);
+            color: #2b1d11; transform: rotate(-2deg); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.15), opacity 0.4s;
+            opacity: 1; font-family: 'EB Garamond', serif; max-height: 80vh; overflow-y: auto;
+        }
+
+        #cheat-sheet.hidden { transform: translateY(200px) translateX(-100px) rotate(-10deg); opacity: 0; pointer-events: none; }
+
+        #cheat-sheet h3 {
+            margin: 0 0 40px 0; font-size: 3rem; border-bottom: 4px double #a67c52;
+            padding-bottom: 20px; text-align: center; font-family: 'Cinzel', serif; font-weight: bold;
+        }
+
+        .hint-row { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 35px; font-size: 2.8rem; font-weight: bold;
+            padding: 15px; border: 2px solid transparent; border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .hint-row:hover { background: rgba(212, 175, 55, 0.1); }
+        .hint-row.collected { background: rgba(212, 175, 55, 0.3); border-color: #a67c52; }
+        .hint-icon { font-size: 6.5rem; color: #3d2a1a; }
+        
+        .hint-position {
+            background: #a67c52; color: #e4d5b7; padding: 8px 16px; 
+            border-radius: 20px; font-size: 1.8rem; font-weight: bold;
+            min-width: 50px; text-align: center;
+        }
+        .hint-answer {
+            font-size: 3.2rem; min-width: 80px; text-align: center;
+            background: #d4af37; color: #2b1d11; padding: 10px 15px; border-radius: 8px;
+            opacity: 0; transition: opacity 0.3s; font-weight: bold;
+        }
+        .hint-answer.revealed { opacity: 1; }
+        .hint-status { font-size: 1.5rem; color: #a67c52; font-style: italic; }
+
+        #close-paper-btn { position: absolute; top: 25px; right: 40px; cursor: pointer; font-weight: bold; color: #7a5c3e; font-size: 3.5rem; }
+
+        #paper-toggle-btn {
+            position: absolute; bottom: 120px; left: 0; z-index: 10; background: #e4d5b7; color: #3d2a1a;
+            padding: 22px 12px 22px 18px; border: 2px solid #a67c52; border-left: none; border-radius: 0 10px 10px 0;
+            box-shadow: 6px 0 18px rgba(0,0,0,0.7); cursor: pointer; font-weight: 700; font-size: 1.2rem;
+            letter-spacing: 4px; writing-mode: vertical-rl; text-orientation: mixed; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27);
+        }
+        #paper-toggle-btn:hover { transform: translateX(18px); background: #f1e6d0; }
+
+        /* =========================================
+           5. 右下角：石製密碼鎖 
+           ========================================= */
+        #lock-ui {
+            position: absolute; bottom: 50px; right: 50px; z-index: 10;
+            background: rgba(35, 30, 25, 0.98); padding: 35px 40px; border-radius: 20px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 15px 45px rgba(0,0,0,0.9);
+            border: 3px solid #d4af37; display: flex; gap: 20px; align-items: center;
+        }
+        .lock-position-label { color: #d4af37; font-size: 1.5rem; font-weight: bold; text-align: center; min-width: 50px; }
+        
+        .stone-input {
+            width: 130px; height: 150px; background: #0a0a0a; border: 3px solid #5a4228; border-radius: 12px;
+            box-shadow: inset 0 8px 25px rgba(0,0,0,1); color: #d4af37; font-size: 6rem; font-weight: bold;
+            text-align: center; text-transform: uppercase; outline: none; transition: all 0.2s; font-family: 'Cinzel', serif;
+        }
+        .stone-input:focus { border-color: #d4af37; box-shadow: inset 0 0 20px rgba(212, 175, 55, 0.3), 0 0 15px rgba(212, 175, 55, 0.5); text-shadow: 0 0 18px #d4af37; }
+        .error-shake { animation: shake 0.4s; border-color: #e63946 !important; color: #e63946 !important; text-shadow: 0 0 12px #e63946 !important; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 75% { transform: translateX(-8px); } 100% { transform: translateX(0); } }
+
+        /* =========================================
+           6. 🌟 TRUTH 成功畫面與道具動畫 
+           ========================================= */
+        #success-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95); z-index: 300; color: #d4af37;
+            text-align: center; justify-content: center; align-items: center; flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        #truth-artifact {
+            max-width: 450px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.5));
+            animation: artifactReveal 3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, floatArtifact 4s ease-in-out infinite 3s;
+        }
+
+        @keyframes artifactReveal {
+            0% { transform: translateY(-100px) scale(0.5) rotate(-10deg); opacity: 0; filter: drop-shadow(0 0 0 rgba(212, 175, 55, 0)); }
+            60% { transform: translateY(10px) scale(1.05) rotate(3deg); opacity: 1; }
+            100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; filter: drop-shadow(0 0 50px rgba(212, 175, 55, 0.9)); }
+        }
+
+        @keyframes floatArtifact {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        #success-screen h1 {
+            font-size: 5rem; text-shadow: 0 0 30px #d4af37; margin: 0;
+            animation: slideUp 1s ease-out 1.5s both; 
+        }
+
+        #success-screen p {
+            font-size: 2.2rem; margin-top: 15px; font-family: 'EB Garamond', serif; color: #cfbba0;
+            animation: slideUp 1s ease-out 2s both;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* =========================================
+           7. 音效按鈕
+           ========================================= */
+        #sound-toggle {
+            position: absolute; top: 20px; right: 20px; z-index: 100;
+            background: rgba(212, 175, 55, 0.8); color: #111;
+            padding: 12px 16px; border-radius: 8px; cursor: pointer;
+            font-weight: bold; font-size: 1.2rem; border: 2px solid #d4af37; transition: all 0.3s;
+        }
+        #sound-toggle:hover { background: #d4af37; transform: scale(1.05); }
+        #sound-toggle.muted { background: rgba(160, 160, 160, 0.6); border-color: #888; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div id="strike-hint">快速用力劃動滑鼠，嘗試點燃火把...</div>
+    <button id="sound-toggle">🔊 音效 ON</button>
+
+    <div id="intro-screen">
+        <div class="intro-box">
+            <h2>埃及展廳：象形密碼</h2>
+            <div class="divider"></div>
+            <p>這面牆後隱藏著秘密，解開它，就離真相更近了一步。電力已中斷，你只好依靠這根火柴...</p>
+            <ul>
+                <li>🔦 <strong>探索：</strong>快速用力劃動滑鼠來摩擦火柴，直到火光亮起。</li>
+                <li>📝 <strong>對照：</strong>用火把掃過牆面，找到發光的象形文字，點擊收集翻譯。</li>
+                <li>🔓 <strong>解鎖：</strong>根據紙條上的翻譯和位置編號，輸入正確的密碼。</li>
+            </ul>
+            <button id="start-btn">我準備好了</button>
+        </div>
+    </div>
+
+    <div id="paper-toggle-btn">FIELD NOTES</div>
+
+    <div id="cheat-sheet" class="hidden">
+        <div id="close-paper-btn">✖</div>
+        <h3>ARCHAEOLOGY NOTES</h3>
+        <div id="hint-rows-container"></div>
+    </div>
+
+    <div id="lock-ui">
+        <div class="lock-position-label">Ⅰ</div>
+        <input type="text" class="stone-input" id="slot1" maxlength="1" autocomplete="off">
+        <div class="lock-position-label">Ⅱ</div>
+        <input type="text" class="stone-input" id="slot2" maxlength="1" autocomplete="off">
+        <div class="lock-position-label">Ⅲ</div>
+        <input type="text" class="stone-input" id="slot3" maxlength="1" autocomplete="off">
+    </div>
+
+    <div id="success-screen">
+        <img id="truth-artifact" src="IMG_6746.PNG" alt="The Truth">
+        <h1>機關已解開</h1>
+        <p>通往真實的道路已為你開啟...</p>
+    </div>
+
+    <script>
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          密碼系統 - 動態生成和打亂
+           ╚══════════════════════════════════════════════════════════╝ */
+        const PasswordSystem = {
+            symbolPool: [
+                { icon: '𓅃', answer: 'W' }, { icon: '𓇋', answer: 'E' }, { icon: '𓃀', answer: 'B' },
+                { icon: '𓆣', answer: 'X' }, { icon: '𓁹', answer: 'Y' }
+            ],
+            selectedSymbols: [], correctPassword: '', positionMap: {}, wallPositions: {}, collectedAnswers: {},
+            init() {
+                this.selectedSymbols = this.shuffleArray([...this.symbolPool]).slice(0, 3);
+                this.correctPassword = this.selectedSymbols.map(s => s.answer).join('');
+                this.selectedSymbols.forEach((symbol, index) => {
+                    this.positionMap[index + 1] = symbol.answer;
+                    this.collectedAnswers[symbol.icon] = false;
+                });
+                console.log('Generated Password:', this.correctPassword);
+            },
+            shuffleArray(array) {
+                let arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            },
+            getSelectedSymbols() { return this.selectedSymbols; },
+            getCorrectPassword() { return this.correctPassword; },
+            setWallPosition(icon, x, y) { this.wallPositions[icon] = { x, y }; },
+            getWallPosition(icon) { return this.wallPositions[icon]; },
+            collectAnswer(icon) { this.collectedAnswers[icon] = true; },
+            isAnswerCollected(icon) { return this.collectedAnswers[icon] || false; }
+        };
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║       音效管理系統 
+           ╚══════════════════════════════════════════════════════════╝ */
+        const SoundManager = {
+            audioContext: null, isMuted: false, bgm: null,
+            init() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.bgm = new Audio('./sounds/bg.mp3');
+                this.bgm.loop = true;  
+                this.bgm.volume = 0.3; // BGM音量
+                document.getElementById('sound-toggle').addEventListener('click', () => this.toggleMute());
+            },
+            playBGM() {
+                if (!this.isMuted && this.bgm) {
+                    this.bgm.play().catch(e => console.log("BGM play blocked:", e));
+                }
+            },
+            playStrike() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const bufferSize = this.audioContext.sampleRate * 0.15;
+                const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noiseSource = this.audioContext.createBufferSource(); noiseSource.buffer = noiseBuffer;
+                const filter = this.audioContext.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 3000;
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.setValueAtTime(0.2, now); // 💡 音量降低
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                noiseSource.connect(filter); filter.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                noiseSource.start(now); noiseSource.stop(now + 0.15);
+            },
+            playTorchLight() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.5);
+                const gainNode = this.audioContext.createGain(); gainNode.gain.setValueAtTime(0, now); 
+                gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1); // 💡 音量降低
+                gainNode.gain.exponentialRampToValueAtTime(0.05, now + 0.5);
+                osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                osc.start(now); osc.stop(now + 0.5);
+            },
+            playWrongPassword() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                for (let i = 0; i < 3; i++) {
+                    const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.value = 800 + i * 200;
+                    const gainNode = this.audioContext.createGain(); 
+                    gainNode.gain.setValueAtTime(0.1, now + i * 0.15); // 💡 音量降低
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.15);
+                    osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                    osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.15);
+                }
+            },
+            playSuccess() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const notes = [523.25, 659.25, 783.99, 523.25, 659.25, 783.99, 1046.50];
+                for (let i = 0; i < notes.length; i++) {
+                    const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.value = notes[i];
+                    const gainNode = this.audioContext.createGain(); 
+                    gainNode.gain.setValueAtTime(0.15, now + i * 0.2); // 💡 音量降低
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.2 + 0.25);
+                    osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                    osc.start(now + i * 0.2); osc.stop(now + i * 0.2 + 0.25);
+                }
+            },
+            playCollect() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const osc = this.audioContext.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+                const gainNode = this.audioContext.createGain(); 
+                gainNode.gain.setValueAtTime(0.1, now); // 💡 音量降低
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                osc.start(now); osc.stop(now + 0.2);
+            },
+            playPaperSlide() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const bufferSize = this.audioContext.sampleRate * 0.4;
+                const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noiseSource = this.audioContext.createBufferSource(); noiseSource.buffer = noiseBuffer;
+                const filter = this.audioContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1200;
+                const gainNode = this.audioContext.createGain(); gainNode.gain.setValueAtTime(0, now); gainNode.gain.linearRampToValueAtTime(0.15, now + 0.1); gainNode.gain.exponentialRampToValueAtTime(0.05, now + 0.4);
+                noiseSource.connect(filter); filter.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                noiseSource.start(now); noiseSource.stop(now + 0.4);
+            },
+            playPaperClose() {
+                if (this.isMuted) return;
+                const now = this.audioContext.currentTime;
+                const bufferSize = this.audioContext.sampleRate * 0.2;
+                const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noiseSource = this.audioContext.createBufferSource(); noiseSource.buffer = noiseBuffer;
+                const filter = this.audioContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
+                const gainNode = this.audioContext.createGain(); gainNode.gain.setValueAtTime(0.15, now); gainNode.gain.exponentialRampToValueAtTime(0.02, now + 0.2);
+                noiseSource.connect(filter); filter.connect(gainNode); gainNode.connect(this.audioContext.destination);
+                noiseSource.start(now); noiseSource.stop(now + 0.2);
+            },
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                const btn = document.getElementById('sound-toggle');
+                if (this.isMuted) {
+                    btn.textContent = '🔇 音效 OFF'; btn.classList.add('muted');
+                    if (this.bgm) this.bgm.pause();
+                } else {
+                    btn.textContent = '🔊 音效 ON'; btn.classList.remove('muted');
+                    if (this.bgm && gameState.phase !== 'intro') this.bgm.play();
+                }
+            }
+        };
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          統一遊戲狀態管理
+           ╚══════════════════════════════════════════════════════════╝ */
+        const gameState = {
+            phase: 'intro', strikeCount: 0, isWaitingToStrike: false, isTorchLit: false, currentRadius: 0,
+            lastStrikeFrame: 0, mouseSpeed: 0, flashOpacity: 0, password: { slot1: '', slot2: '', slot3: '' },
+            MAX_SPARKS: 30, MOUSE_SPEED_THRESHOLD: 80, STRIKE_COOLDOWN: 15, torchX: 0, torchY: 0
+        };
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          粒子池優化
+           ╚══════════════════════════════════════════════════════════╝ */
+        class Spark {
+            constructor(x, y, big = false) { this.reset(x, y, big); }
+            reset(x, y, big = false) {
+                this.x = x; this.y = y; this.vx = random(-10, 10); this.vy = random(-12, 5);
+                this.life = 255; this.size = big ? random(8, 12) : random(3, 6); this.isDead = false;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.vy += 0.4; this.life -= 10; if (this.life <= 0) this.isDead = true; }
+            draw() { noStroke(); fill(255, random(100, 180), 30, this.life); circle(this.x, this.y, this.size); }
+        }
+
+        const particlePool = {
+            available: [], active: [],
+            init(size = 200) { for (let i = 0; i < size; i++) this.available.push(new Spark(0, 0)); },
+            spawn(x, y, big = false) {
+                let p = this.available.length > 0 ? this.available.pop() : new Spark(x, y, big);
+                p.reset(x, y, big); this.active.push(p);
+            },
+            update() {
+                for (let i = this.active.length - 1; i >= 0; i--) {
+                    this.active[i].update(); if (this.active[i].isDead) this.available.push(this.active.splice(i, 1)[0]);
+                }
+            },
+            drawAll() { for (let p of this.active) p.draw(); }
+        };
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          UI 控制器
+           ╚══════════════════════════════════════════════════════════╝ */
+        const UIController = {
+            introScreen: document.getElementById('intro-screen'), strikeHint: document.getElementById('strike-hint'),
+            startBtn: document.getElementById('start-btn'), paperBtn: document.getElementById('paper-toggle-btn'),
+            sheet: document.getElementById('cheat-sheet'), closeSheetBtn: document.getElementById('close-paper-btn'),
+            lockUI: document.getElementById('lock-ui'), successScreen: document.getElementById('success-screen'),
+            inputs: [ document.getElementById('slot1'), document.getElementById('slot2'), document.getElementById('slot3') ],
+
+            init() {
+                this.startBtn.addEventListener('click', () => this.startGame());
+                this.paperBtn.addEventListener('click', () => this.openSheet());
+                this.closeSheetBtn.addEventListener('click', () => this.closeSheet());
+                
+                document.getElementById('lock-ui').addEventListener('input', (e) => {
+                    if (e.target.classList.contains('stone-input')) this.handlePasswordInput(e.target);
+                });
+                document.getElementById('lock-ui').addEventListener('keydown', (e) => {
+                    if (e.target.classList.contains('stone-input') && e.key === 'Backspace') this.handleBackspace(e.target);
+                });
+            },
+            renderHintRows() {
+                const container = document.getElementById('hint-rows-container');
+                container.innerHTML = '';
+                PasswordSystem.getSelectedSymbols().forEach((symbol, index) => {
+                    const position = index + 1;
+                    const row = document.createElement('div');
+                    row.className = 'hint-row'; row.id = `hint-row-${symbol.icon}`;
+                    row.innerHTML = `<span class="hint-icon">${symbol.icon}</span><span>➜</span><span class="hint-position">${this.toRomanNumeral(position)}</span><span>➜</span><span class="hint-answer" data-index="${index}"></span><span class="hint-status">未收集</span>`;
+                    container.appendChild(row);
+                });
+            },
+            revealAnswer(icon, answer) {
+                if (!PasswordSystem.isAnswerCollected(icon)) {
+                    PasswordSystem.collectAnswer(icon);
+                    const rowElement = document.getElementById(`hint-row-${icon}`);
+                    if (rowElement) {
+                        const answerElement = rowElement.querySelector('.hint-answer'); const statusElement = rowElement.querySelector('.hint-status');
+                        answerElement.textContent = answer; answerElement.classList.add('revealed');
+                        rowElement.classList.add('collected'); statusElement.textContent = '已收集 ✓';
+                        SoundManager.playCollect();
+                    }
+                }
+            },
+            toRomanNumeral(num) { const romans = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ']; return romans[num] || num.toString(); },
+            startGame() {
+                if (SoundManager.audioContext && SoundManager.audioContext.state === 'suspended') SoundManager.audioContext.resume();
+                SoundManager.playBGM();
+
+                this.introScreen.style.transition = "opacity 0.8s ease"; this.introScreen.style.opacity = "0";
+                setTimeout(() => {
+                    this.introScreen.style.display = "none"; gameState.isWaitingToStrike = true;
+                    gameState.phase = 'playing'; this.strikeHint.style.display = "block";
+                }, 800);
+            },
+            openSheet() { SoundManager.playPaperSlide(); this.sheet.classList.remove('hidden'); },
+            closeSheet() { SoundManager.playPaperClose(); this.sheet.classList.add('hidden'); },
+            handlePasswordInput(input) {
+                input.value = input.value.toUpperCase(); const index = this.inputs.indexOf(input); gameState.password[`slot${index + 1}`] = input.value;
+                if (input.value.length === 1 && index < this.inputs.length - 1) this.inputs[index + 1].focus();
+                this.checkPassword();
+            },
+            handleBackspace(input) { const index = this.inputs.indexOf(input); if (input.value === '' && index > 0) this.inputs[index - 1].focus(); },
+            checkPassword() {
+                const currentVal = Object.values(gameState.password).join('');
+                if (currentVal.length === 3) {
+                    if (currentVal === PasswordSystem.getCorrectPassword()) { this.showSuccess(); } else { this.showError(); }
+                }
+            },
+            showSuccess() {
+                gameState.phase = 'success'; SoundManager.playSuccess();
+                if(SoundManager.bgm) SoundManager.bgm.pause();
+                this.lockUI.style.display = 'none'; this.paperBtn.style.display = 'none'; this.sheet.style.display = 'none'; this.successScreen.style.display = 'flex';
+            },
+            showError() {
+                SoundManager.playWrongPassword(); this.inputs.forEach(i => i.classList.add('error-shake'));
+                setTimeout(() => {
+                    this.inputs.forEach(i => { i.classList.remove('error-shake'); i.value = ''; });
+                    gameState.password = { slot1: '', slot2: '', slot3: '' }; this.inputs[0].focus();
+                }, 500);
+            }
+        };
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          象形文字石牆背景生成器
+           ╚══════════════════════════════════════════════════════════╝ */
+        let stoneWallGraphics;
+        function generateStoneWall() {
+            stoneWallGraphics = createGraphics(windowWidth, windowHeight);
+            stoneWallGraphics.background(140, 115, 85); stoneWallGraphics.noStroke();
+            for (let i = 0; i < 200; i++) {
+                let x = random(windowWidth); let y = random(windowHeight); let size = random(20, 80);
+                stoneWallGraphics.fill(random(110, 150), random(90, 120), random(70, 100), random(30, 80));
+                stoneWallGraphics.rect(x, y, size, size);
+            }
+            stoneWallGraphics.fill(180, 160, 140); stoneWallGraphics.textSize(50); stoneWallGraphics.textAlign(CENTER, CENTER);
+            const hieroglyphs = ['𓅃', '𓇋', '𓃀', '𓆣', '𓁹', '𓇌', '𓇍', '𓆤', '𓆥', '𓆦', '𓆨', '𓆩', '𓆪'];
+            for (let y = 50; y < windowHeight; y += 70) {
+                for (let x = 50; x < windowWidth; x += 70) {
+                    const offsetX = x + random(-20, 20); const offsetY = y + random(-20, 20);
+                    const hiero = hieroglyphs[Math.floor(Math.random() * hieroglyphs.length)];
+                    stoneWallGraphics.text(hiero, offsetX, offsetY);
+                }
+            }
+            stoneWallGraphics.stroke(0, 0, 0, 40); stoneWallGraphics.strokeWeight(2);
+            for (let i = 0; i < 50; i++) {
+                let x1 = random(windowWidth); let y1 = random(windowHeight);
+                let x2 = x1 + random(-100, 100); let y2 = y1 + random(-100, 100);
+                stoneWallGraphics.line(x1, y1, x2, y2);
+            }
+        }
+
+        /* ╔══════════════════════════════════════════════════════════╗
+           ║          p5.js 火把引擎
+           ╚══════════════════════════════════════════════════════════╝ */
+        let darknessMask;
+        function setup() {
+            pixelDensity(1);
+            let canvas = createCanvas(windowWidth, windowHeight); canvas.parent('canvas-container');
+            darknessMask = createGraphics(windowWidth, windowHeight);
+            particlePool.init(200);
+            
+            PasswordSystem.init();
+            generateStoneWall();
+            
+            const centerX = windowWidth / 2; const centerY = windowHeight / 2;
+            PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[0].icon, centerX - 500, centerY - 350);
+            PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[1].icon, centerX + 450, centerY + 300);
+            PasswordSystem.setWallPosition(PasswordSystem.selectedSymbols[2].icon, centerX - 400, centerY + 350);
+            
+            // 💡 確保混淆符號被加到牆上
+            const decoySymbols = PasswordSystem.symbolPool.filter(s => !PasswordSystem.selectedSymbols.includes(s));
+            if(decoySymbols.length >= 2){
+                PasswordSystem.setWallPosition(decoySymbols[0].icon, centerX + 300, centerY - 250);
+                PasswordSystem.setWallPosition(decoySymbols[1].icon, centerX - 100, centerY + 400);
+            }
+
+            UIController.init(); UIController.renderHintRows(); SoundManager.init(); imageMode(CENTER);
+        }
+
+        function draw() {
+            image(stoneWallGraphics, windowWidth / 2, windowHeight / 2);
+
+            if (gameState.isWaitingToStrike && !gameState.isTorchLit) {
+                gameState.mouseSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
+                if (gameState.mouseSpeed > gameState.MOUSE_SPEED_THRESHOLD &&
+                    (frameCount - gameState.lastStrikeFrame > gameState.STRIKE_COOLDOWN)) {
+                    gameState.strikeCount++; gameState.lastStrikeFrame = frameCount;
+                    if (gameState.strikeCount < 3) {
+                        SoundManager.playStrike(); gameState.flashOpacity = 200;
+                        for (let i = 0; i < 15; i++) particlePool.spawn(mouseX, mouseY);
+                    } else {
+                        SoundManager.playTorchLight(); gameState.isTorchLit = true; gameState.isWaitingToStrike = false;
+                        UIController.strikeHint.style.display = "none";
+                        for (let i = 0; i < min(60, gameState.MAX_SPARKS); i++) particlePool.spawn(mouseX, mouseY, true);
+                    }
+                }
+            }
+
+            if (gameState.isTorchLit) {
+                noCursor(); gameState.currentRadius = lerp(gameState.currentRadius, 380, 0.05);
+                gameState.torchX = mouseX; gameState.torchY = mouseY;
+            }
+
+            let flicker = gameState.currentRadius > 50 ? random(-6, 6) : 0;
+            let actualRadius = gameState.currentRadius + flicker;
+
+            if (gameState.isTorchLit && gameState.currentRadius > 10) {
+                drawingContext.shadowBlur = 40; drawingContext.shadowColor = 'rgba(255, 60, 0, 0.9)';
+                fill(255, 180, 50, 25); noStroke(); circle(mouseX, mouseY, actualRadius); drawingContext.shadowBlur = 0;
+            }
+
+            darknessMask.clear();
+            let envDarkness = gameState.isTorchLit ? map(noise(frameCount * 0.01), 0, 1, 245, 250) : (255 - gameState.flashOpacity);
+            darknessMask.background(0, 0, 0, envDarkness);
+
+            if (gameState.isTorchLit) {
+                darknessMask.erase(); darknessMask.circle(mouseX, mouseY, gameState.currentRadius + random(-5, 5)); darknessMask.noErase();
+            } else if (gameState.flashOpacity > 0) {
+                darknessMask.erase(); darknessMask.circle(mouseX, mouseY, 150); darknessMask.noErase(); gameState.flashOpacity -= 15;
+            }
+
+            push(); imageMode(CORNER); image(darknessMask, 0, 0); pop();
+
+            // 💡 畫出牆上所有的象形文字（包含正確與混淆項）
+            if (gameState.isTorchLit && gameState.phase === 'playing') {
+                drawingContext.shadowBlur = 25; drawingContext.shadowColor = 'rgba(255, 215, 0, 0.9)';
+                for (const [icon, pos] of Object.entries(PasswordSystem.wallPositions)) {
+                    const dist_from_torch = dist(gameState.torchX, gameState.torchY, pos.x, pos.y);
+                    if (dist_from_torch < gameState.currentRadius) {
+                        fill(255, 215, 0); textSize(80); textAlign(CENTER, CENTER); text(icon, pos.x, pos.y);
+                    }
+                }
+                drawingContext.shadowBlur = 0;
+            }
+
+            particlePool.update(); particlePool.drawAll();
+        }
+
+        function mousePressed() {
+            if (gameState.isTorchLit && gameState.phase === 'playing') {
+                for (let symbol of PasswordSystem.getSelectedSymbols()) {
+                    const pos = PasswordSystem.getWallPosition(symbol.icon);
+                    if (pos) {
+                        const dist_to_symbol = dist(mouseX, mouseY, pos.x, pos.y);
+                        const dist_from_torch = dist(gameState.torchX, gameState.torchY, pos.x, pos.y);
+                        if (dist_to_symbol < 50 && dist_from_torch < gameState.currentRadius + 100) {
+                            UIController.revealAnswer(symbol.icon, symbol.answer); return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        function windowResized() { resizeCanvas(windowWidth, windowHeight); darknessMask = createGraphics(windowWidth, windowHeight); generateStoneWall(); }
+        document.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+    </script>
+</body>
+</html>
+
+```
